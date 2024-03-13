@@ -60,7 +60,7 @@ The first argument should be a CSV file with the addresses to look up, and it sh
 
 *Note: Any additional columns will be left as-is and will also appear in the output.*
 
-The second argument should point to the folder containing the TIF data files from the Klimaateffectatlas. Note that the tool will process any TIF file it finds, so only include the TIF files you are interested in!
+The second argument should point to the folder containing the TIF data files from Klimaateffectatlas. Note that the tool will process **all** TIF file it can find, so only include the TIF files you are interested in!
 
 ## Contributing
 
