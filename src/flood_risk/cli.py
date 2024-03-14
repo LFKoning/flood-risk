@@ -24,7 +24,13 @@ locator = Nominatim(user_agent="TestGeocoder")
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command line arguments."""
+    """Parse command line arguments.
+
+    Returns
+    -------
+    argparse.Namespace
+        Command line arguments as Namespace object.
+    """
     parser = argparse.ArgumentParser("CLI for looking up risk data")
     parser.add_argument(
         "adress_file", type=str, help="CSV file with adresses to look up."
@@ -51,7 +57,18 @@ def parse_args() -> argparse.Namespace:
 
 
 def find_risk_files(risk_data: str) -> list:
-    """Find TIFF risk files in the specfied folder."""
+    """Find TIFF risk files in the specfied folder.
+
+    Parameters
+    ----------
+    risk_data : str
+        Folder containing TIF risk data files.
+
+    Returns
+    -------
+    list
+        List of Path objects for each TIF file found.
+    """
     logger.info("Searching risk files in: %s", risk_data)
     files = list(Path(risk_data).glob("*.tif"))
     if not files:
@@ -63,7 +80,18 @@ def find_risk_files(risk_data: str) -> list:
 
 
 def load_addresses(adress_file: str) -> pd.DataFrame:
-    """Loads addresses from CSV."""
+    """Loads addresses from CSV.
+
+    Parameters
+    ----------
+    address_file : str
+        Path to the CSV file with addresses to look up.
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame with address data.
+    """
     logger.info("Reading addresses from: %s", adress_file)
 
     try:
@@ -88,36 +116,73 @@ def load_addresses(adress_file: str) -> pd.DataFrame:
     return addresses
 
 
-def lookup_address(address_row: pd.Series) -> Union[None, tuple]:
-    """Look up GPS coordinates for an address."""
+def lookup_address(
+    street: str, house_number: str, postal_code: str
+) -> Union[dict, None]:
+    """Look up GPS coordinates for an address.
+
+    Parameters
+    ----------
+    street : str
+        Street name for the address, excluding house number.
+    house_number : str
+        House number including any suffixes.
+    postal_code : str
+        Dutch 6-character postal code.
+
+    Returns
+    -------
+    dict or None
+        Dict with location information from the Geocoder or
+        None if the address was not found.
+
+    """
     logger.debug(
-        "Looking up addres: {street}, {house_number}, {postal_code}", **address_row
+        f"Looking up addres: {street}, {house_number}, {postal_code}",
     )
-    result = locator.geocode(
+    location = locator.geocode(
         {
-            "street": f"{address_row['street']} {address_row['house_number']}",
-            "postalcode": address_row["postal_code"],
+            "street": f"{street} {house_number}",
+            "postalcode": postal_code,
             "country": "The Netherlands",
-        }
+        },
+        exactly_one=True,
+        addressdetails=True,
     )
+
     # Need to wait at least one second.
     time.sleep(1)
 
-    if not result:
+    if not location:
         logger.warning(
-            "No GPS coordinates found for: {street}, {house_number}, {postal_code}",
-            **address_row,
+            f"No location found for: {street}, {house_number}, {postal_code}"
         )
         return None
 
-    # Re-project GPS coordinates.
-    transformer = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:28992")
-    return transformer.transform(result.latitude, result.longitude)
+    # Return result.
+    geo_data = {"geocode_coordinates": (location.latitude, location.longitude)}
+    for field in "road", "house_number", "village", "municipality", "state", "postcode":
+        geo_data[f"geocode_{field}"] = location.raw["address"].get(field)
+
+    return geo_data
 
 
-def lookup_risks(gps_coords: pd.Series, risk_file: Path) -> pd.Series:
-    """Look up risks for a Series of GPS coordinates."""
-    logger.info("Looking up risk data from: %s", risk_file)
+def lookup_risks(gps_coordinates: pd.Series, risk_file: Path) -> pd.Series:
+    """Look up risks for a Series of GPS coordinates.
+
+    Parameters
+    ----------
+    gps_cooridnates : pd.Series
+        Series object with latitiude, longitude tuples.
+    risk_file : pathlib.Path
+        Path to the TIF risk data file.
+
+    Returns
+    -------
+    pd.Series
+        Series of risk scores for the provided GPS coordinates.
+    """
+    logger.info("Reading risk data from: %s", risk_file)
     try:
         risk_data = xr.open_dataset(risk_file, engine="rasterio")
 
@@ -126,9 +191,15 @@ def lookup_risks(gps_coords: pd.Series, risk_file: Path) -> pd.Series:
         logger.warning("Error reading risk data: %s", error)
         return None
 
-    return gps_coords.map(
-        lambda gps_coords: risk_data.sel(
-            x=gps_coords[0], y=gps_coords[1], method="nearest"
+    # Transform coordinates to target projection.
+    target_projection = risk_data.rio.crs.to_string()
+    logger.debug("Tranforming coordinates to projection: %s", target_projection)
+    transformer = pyproj.Transformer.from_crs("EPSG:4326", target_projection)
+    transformed_coordinates = pd.Series(transformer.itransform(gps_coordinates))
+
+    return transformed_coordinates.map(
+        lambda coords: risk_data.sel(
+            x=coords[0], y=coords[1], method="nearest"
         ).band_data.values[0]
     )
 
@@ -145,15 +216,22 @@ def main() -> None:
     addresses = load_addresses(args.adress_file)
     risk_files = find_risk_files(args.risk_data)
 
-    # Add GPS coordinates.
-    addresses = addresses.assign(gps_coords=lambda df: df.apply(lookup_address, axis=1))
+    # Add Geocoder location details.
+    locations = addresses.apply(
+        lambda row: lookup_address(
+            row["street"], row["house_number"], row["postal_code"]
+        ),
+        axis=1,
+    )
+    locations = pd.json_normalize(locations)
+    addresses = addresses.join(locations)
 
     # Add risk indicators.
     for risk_file in risk_files:
         risk_file = Path(risk_file)
 
         column_name = risk_file.name[:-4].lower().replace(" ", "_")
-        risk_scores = lookup_risks(addresses["gps_coords"], risk_file)
+        risk_scores = lookup_risks(addresses["geocode_coordinates"], risk_file)
         if risk_scores is not None:
             addresses = addresses.assign(**{column_name: risk_scores})
 

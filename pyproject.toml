@@ -72,3 +72,7 @@ good-names = ["X", "y", "df", "e", "n"]
 [tool.pylint.format]
 # Maximum characters on a single line (same as black).
 max-line-length = 88
+
+[tool.pylint.messages_control]
+# List of messages or message categories to ignore.
+disable = ["logging-fstring-interpolation"]
