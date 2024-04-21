@@ -71,6 +71,7 @@ class BAGLookup:
         sqlite3.Connection
             SQLite3 database connection.
         """
+        self._log.debug("Connecting to BAG data: %s", bag_path)
         # Must be an existing database, do not create one.
         if not os.path.isfile(bag_path):
             raise RuntimeError(f"BAG data not found at: {bag_path}")
@@ -143,7 +144,6 @@ class BAGLookup:
 
         location = result.fetchone()
         if not location:
-
             self._log.warning("No location found for: %s", address_str)
             return None
 

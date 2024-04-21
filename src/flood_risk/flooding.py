@@ -21,7 +21,7 @@ class RiskLookup:
         self._path = data_path
 
     def _find_risk_files(self, risk_data: str) -> list:
-        """Find TIFF risk files in the specfied folder.
+        """Find TIF risk files in the specfied folder.
 
         Parameters
         ----------
@@ -39,7 +39,7 @@ class RiskLookup:
             self._log.error("No TIF files found in: %s", risk_data)
             return []
 
-        self._log.info("Found %d risk files", len(files))
+        self._log.info("Found %d TIF files", len(files))
         return files
 
     def lookup(self, data: pd.DataFrame) -> pd.DataFrame:
@@ -72,6 +72,7 @@ class RiskLookup:
         assignments = {}
         risk_files = self._find_risk_files(self._path)
         for risk_file in risk_files:
+            self._log.debug("Processing flooding risks from: %s", risk_file)
             risk_file = Path(risk_file)
             column_name = risk_file.name[:-4].lower().replace(" ", "_")
 

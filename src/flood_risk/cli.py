@@ -98,15 +98,15 @@ def load_addresses(address_file: str) -> pd.DataFrame:
         addresses = pd.read_csv(address_file)
 
     except FileNotFoundError:
-        logger.error("Cannot find address CSV file: %s", address_file)
+        logger.error("Cannot find address CSV file: %s.", address_file)
         sys.exit(1)
 
     # pylint: disable=broad-exception-caught
     except Exception as error:
-        logger.error("Error reading address CSV file: %s", error)
+        logger.error("Error reading address CSV file: %s.", error)
         sys.exit(1)
 
-    logger.info("Found %d addresses", len(addresses))
+    logger.info("Found %d addresses.", len(addresses))
     return addresses
 
 
@@ -123,14 +123,16 @@ def main() -> None:
 
     # Look up geoghraphical locations for addresses.
     if args.method == "bag":
+        logger.info("Using geolocation method: BAG.")
         try:
             bag = BAGLookup(args.bag_path)
             locations = bag.lookup(addresses)
         except RuntimeError as error:
-            logger.error("Error looking op geographical locations: %s.", error)
+            logger.error("Geolocating error: %s.", error)
             sys.exit(1)
 
     else:
+        logger.info("Using geolocation method: Nominatim.")
         nominatim = NominatimLookup()
         locations = nominatim.lookup(addresses)
 
@@ -139,7 +141,7 @@ def main() -> None:
     risk_data = risk.lookup(locations)
 
     # Store output
-    logger.info("Writing flooding risk output to: %s", args.output_file)
+    logger.info("Writing flooding risk output to: %s.", args.output_file)
     risk_data.to_csv(args.output_file, index=False)
 
     logger.info("Finished looking up flooding risks!")
