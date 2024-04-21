@@ -30,29 +30,15 @@ def parse_args() -> argparse.Namespace:
         "address_file",
         type=str,
         help="CSV file with addresses to look up.",
-        default="addresses.csv",
     )
     parser.add_argument(
-        "risk_path",
+        "-r",
+        "--risk",
+        dest="risk_path",
         type=str,
         help="Folder containing flooding risk TIFF files",
-        default="risk_data/"
-    )
-    parser.add_argument(
-        "method",
-        type=str,
-        help="Method for looking up geographical locations",
-        choices=["bag", "nominatim"],
-        default="nominatim",
-    )
-    parser.add_argument(
-        "-b",
-        "--bag",
-        dest="bag_path",
-        type=str,
-        help="Path to the BAG data file.",
+        default="risk_data/",
         required=False,
-        default="bag_data/bag-light.gpkg",
     )
     parser.add_argument(
         "-o",
@@ -62,6 +48,25 @@ def parse_args() -> argparse.Namespace:
         help="CSV file to write results to",
         required=False,
         default="flooding_risks.csv",
+    )
+    parser.add_argument(
+        "-m",
+        "--method",
+        dest="method",
+        type=str,
+        help="Method for looking up geographical locations",
+        choices=["bag", "nominatim"],
+        default="nominatim",
+        required=False,
+    )
+    parser.add_argument(
+        "-b",
+        "--bag",
+        dest="bag_path",
+        type=str,
+        help="Path to the BAG data file.",
+        default="bag_data/bag-light.gpkg",
+        required=False,
     )
     parser.add_argument(
         "-v",

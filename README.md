@@ -44,23 +44,54 @@ This tool offers a Command Line Interface (CLI), for more info type:
 floodrisk -h
 ```
 
-To use the tool, type:
+To use the tool with default settings, type:
 
 ```shell
-floodrisk <CSV file with addresses> <flood risk data>
+floodrisk my_addresses.csv
+
 ```
 
-The first argument should be a CSV file with the addresses to look up, and it should contain these columns:
+This will process all addresses found in `my_addresses.csv`. The tool will first look up
+the geographical locations for all addresses using Nominatim. Then it will add flooding
+risks using TIF files found in the `risk_data/` folder. Finally, it stores the output in
+ `flooding_risks.csv`.
 
-|column|description|example|
-|---|---|--|
-|`street`|Street name for the address|`Bakkerstraat`|
-|`house_number`|House number including suffixes|`3a`|
-|`postal_code`|Dutch 6-character postal code|`1234 AB`|
+You can change all settings using the command line:
+
+| argument    | short | description                                           | default                   |
+| ----------- | ----- | ----------------------------------------------------- | ------------------------- |
+| `--risk`    | `-r`  | Path to the folder containing TIF files.              | `./risk_data/`            |
+| `--output`  | `-o`  | Path for the output CSV file.                         | `./flooding_risk.csv`     |
+| `--method`  | `-m`  | Method for address geolocation; `bag` of `nominatim`. | `nominatim`               |
+| `--bag`     | `-b`  | Path to the BAG geopackage file.                      | `bag_data/bag-light.gpkg` |
+| `--verbose` | `-v`  | Logging verbosity level for the terminal.             | `info`                    |
+
+To use the `bag` method for geolocating addresses, please download the data from:
+
+- Website: https://service.pdok.nl/lv/bag/atom/bag.xml
+- Direct download: https://service.pdok.nl/lv/bag/atom/downloads/bag-light.gpkg
+
+
+## Address CSV Format
+
+The first argument for the tool should be a CSV file with the addresses which should
+contain these columns:
+
+| column         | description                   | example        |
+| -------------- | ----------------------------- | -------------- |
+| `street`       | Street name for the address.  | `Bakkerstraat` |
+| `house_number` | House number, numerical part. | `3`            |
+| `house_letter` | House number, letter part.    | `A`            |
+| `house_suffix` | House nummber suffix.         | `III`          |
+| `postcode`     | Dutch 6-character postal code | `1234 AB`      |
 
 *Note: Any additional columns will be left as-is and will also appear in the output.*
 
-The second argument should point to the folder containing the TIF data files from Klimaateffectatlas. Note that the tool will process **all** TIF file it can find, so only include the TIF files you are interested in!
+## Risk data TIF files
+
+The `risk` argument should point to a folder containing the TIF data files from the
+[Klimaateffectatlas]([https://](https://www.klimaateffectatlas.nl/nl/)). Note that the
+tool will process **all** TIF files it finds in the specified folder!
 
 ## Contributing
 
