@@ -13,6 +13,7 @@ from flood_risk.nominatim import NominatimLookup
 logging.basicConfig(
     format="%(asctime)s - %(levelname)-8s - %(name)-20s %(message)-.150s",
     datefmt="%d-%m-%YT%H:%M:%S",
+    level=logging.DEBUG,
 )
 logger = logging.getLogger("FloodingRisk")
 
